@@ -23,6 +23,7 @@ library(plyr)
 home_dir <- "~/_smu/_src/mashable/"
 setwd(home_dir)
 data_dir <- "./data"
+eda_dir <- "./eda"
 
 ```
 
@@ -47,7 +48,12 @@ data_dir <- "./data"
 ```
 
 ***  
-
+Please include this citation if you plan to use this database:  
+ 
+    K. Fernandes, P. Vinagre and P. Cortez. A Proactive Intelligent Decision
+    Support System for Predicting the Popularity of Online News. Proceedings
+    of the 17th EPIA 2015 - Portuguese Conference on Artificial Intelligence,
+    September, Coimbra, Portugal.  
 ***  
 
 ```{r remove outliers, include = TRUE, message = FALSE}
@@ -110,34 +116,85 @@ data_dir <- "./data"
 	
 ```
 
-```{r first plots}
 
-	plot(x_ft ~ y_ft, mash, col = "blue")
-	plot(x_ft ~ y_ft, mash, col = shot_distance)
-	
-	png (filename = "shot_zone_area.png", width = 500, height = 400)
-	plot(x_ft ~ y_ft, mash, col = shot_zone_area)
-	dev.off()
-	
-	plot(x_ft ~ y_ft, mash, col = shot_zone_range)
-	
-	plot(x_ft ~ y_ft, mash, col = shot_made_flag+2)
-	
-	plot(x_ft ~ y_ft, data = mash[mash$shot_made_flag == 1,],
-		 	col = "darkgreen",
-		 	xlim = c(-10, 60))
-	plot(x_ft ~ y_ft, data = mash[mash$shot_made_flag == 0,],
-		 	col = "grey",
-		 xlim = c(-10, 60))
+```{r plot base data, echo = FALSE, message = FALSE, comment = "", fig.width = 12}
 
-	plot(x_ft ~ y_ft, mash, col = shot_type)
+  setwd(home_dir)
+  setwd(eda_dir)
 
-	plot(rad ~ ang, data = mash, col = shot_made_flag+2)
-	
-	boxplot(shot_distance ~ shot_type, data = mash)
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	make some plots for numeric variables .....
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-	boxplot(shot_distance ~ shot_good, data = mash)
-	
+	cx_scale = 2.5
+# ... 	use cx_scale = 1 for in-line html knitted docs
+# ...	use cx_scale = 3 for pdf landscape mode knitted docs
+
+	par (mfrow = c (1, 2))
+
+	plot(mash$shares, col = "darkgoldenrod",
+		cex = cx_scale, cex.lab = cx_scale, cex.axis = cx_scale, cex.main = cx_scale,
+	  	xlab = names(mash[i]),
+	  	main = "Dependent variable - Shares sequence")
+
+	for (i in 2 : length(mash))
+	{
+		if(class(mash[,i]) == "integer"
+		   					|| class(mash[,i]) == "numeric"
+		   					|| class(mash[,i]) == "matrix")
+		{
+				  
+			png (filename = paste0(names(mash[i]), "_%02d.png"), width = 1800, height = 600)
+			par (mfrow = c (1, 4))
+
+			plot(mash[,i], col = "cyan",
+				 cex = cx_scale, cex.lab = cx_scale, cex.axis = cx_scale, cex.main = cx_scale,
+				  	xlab = names(mash[i]),
+				  	main = "Independent variable sequence")
+
+			hist(mash[,i], main = names(mash[i]), cex.lab = cx_scale, cex.main = cx_scale)
+			if (skewness(mash[,i], na.rm = TRUE) < 0)
+			{
+				txt_pos <- "topleft"
+			}
+			else {
+				txt_pos <- "topright"
+			}
+			legend(txt_pos, legend = c(paste("Mean =", round(mean(mash[,i], na.rm = TRUE), 1)),
+                            paste("Median =",round(median(mash[,i], na.rm = TRUE), 1)),
+                            paste("Std.Dev =", round(sd(mash[,i], na.rm = TRUE), 1)), 
+                            paste("Skewness =", round(skewness(mash[,i], na.rm = TRUE), 1))), 
+                  bty = "n", cex = cx_scale)
+			
+			
+			plot(mash$shares  ~ mash[,i],
+				 		col = "blue",
+				 		cex = cx_scale,
+				 		cex.lab = cx_scale,
+				 		cex.axis = cx_scale,
+				 		cex.main = cx_scale,
+				 	ylab = "Shares",
+				  	xlab = names(mash[i]),
+				  	main = "Independent variable vs. Shares")
+			abline(lm(mash$shares ~ mash[,i]))
+
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	look at residuals from one-variable linear fit			
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+			fit <- lm(mash$shares ~ mash[,i], na.action = na.exclude)
+			res <- resid(fit)
+			plot (mash[,i], res, cex = cx_scale, cex.lab = cx_scale, cex.axis = cx_scale, cex.main = cx_scale,
+				  ylab = "Residuals",
+				  xlab = names(mash[i]),
+				  main = "Residuals from Linear Fit",
+				  col = "magenta")
+			abline (0, 0)
+			
+		}
+		dev.off()
+	}
+
 ```
 
 
