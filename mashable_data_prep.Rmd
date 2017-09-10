@@ -1,0 +1,233 @@
+---
+title: "data_prep - mashable"
+author: "patrick mcdevitt"
+date: "5 sep 2017"
+output: html_document
+classoption: landscape
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+
+rm(list=ls())
+
+library(lubridate)
+library(MASS)
+library(car)
+library(moments)
+library(ggplot2)
+library(plyr)
+
+home_dir <- "~/_smu/_src/mashable/"
+setwd(home_dir)
+data_dir <- "./data"
+
+```
+
+
+```{r read data, include = TRUE, message = FALSE}
+
+	setwd(home_dir)
+	setwd(data_dir)
+
+	mash <- read.csv("OnlineNewsPopularity.csv")
+	setwd(home_dir)
+
+	names(mash) <- tolower(names(mash))
+	
+	for (i in 1:(length(mash)))
+	{
+		if (class(mash[,i]) == "character")
+		{
+			mash[,i] <- factor(mash[,i])
+		}
+	}
+```
+
+***  
+
+***  
+
+```{r remove outliers, include = TRUE, message = FALSE}
+
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	remove outliers ... more than 5 sigma from mean value
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+	
+	lst <- length(mash)	#
+	
+	for (i in 1 : lst)
+	{
+		if(class(mash[,i]) == "integer" || class(mash[,i]) == "numeric")
+		{
+			mash[,i][which(scale(mash[,i]) > 5)] <- NA
+			mash[,i][which(scale(mash[,i]) < -5)] <- NA
+		}
+	}
+
+```
+
+
+
+```{r add some variables}
+
+```
+
+```{r drop no information columns} 
+
+#	mash <- subset(mash, select = -c(team_id, team_name, game_event_id, game_id))
+
+```
+
+
+```{r raw data tabular summary, message = FALSE}
+
+	summary_tbl <- data.frame(x = character(0), stats = character(0))
+
+	for (i in 2 : length(mash))
+	{
+		if(class(mash[,i]) == "integer" || class(mash[,i]) == "numeric")
+		{
+			new_row <- data.frame(x = names(mash[i]),
+								  stats = sprintf (
+								  	 "| %8d | %8d | %8.1f | %8.1f | %8.1f | %8.1f | %8.3f | ", 
+									colSums(!is.na(mash[i])),
+									(dim(mash)[1] - colSums(!is.na(mash[i]))),
+								  	mean(mash[,i], na.rm = TRUE),
+								  	median(mash[,i], na.rm = TRUE),
+								  	max(mash[,i], na.rm = TRUE),
+								  	min(mash[,i], na.rm = TRUE),
+								  	skewness(mash[,i], na.rm = TRUE)
+								  	)
+								  )
+			summary_tbl <- rbind(summary_tbl, new_row)
+		}
+	}
+
+	summary_tbl
+	
+```
+
+```{r first plots}
+
+	plot(x_ft ~ y_ft, mash, col = "blue")
+	plot(x_ft ~ y_ft, mash, col = shot_distance)
+	
+	png (filename = "shot_zone_area.png", width = 500, height = 400)
+	plot(x_ft ~ y_ft, mash, col = shot_zone_area)
+	dev.off()
+	
+	plot(x_ft ~ y_ft, mash, col = shot_zone_range)
+	
+	plot(x_ft ~ y_ft, mash, col = shot_made_flag+2)
+	
+	plot(x_ft ~ y_ft, data = mash[mash$shot_made_flag == 1,],
+		 	col = "darkgreen",
+		 	xlim = c(-10, 60))
+	plot(x_ft ~ y_ft, data = mash[mash$shot_made_flag == 0,],
+		 	col = "grey",
+		 xlim = c(-10, 60))
+
+	plot(x_ft ~ y_ft, mash, col = shot_type)
+
+	plot(rad ~ ang, data = mash, col = shot_made_flag+2)
+	
+	boxplot(shot_distance ~ shot_type, data = mash)
+
+	boxplot(shot_distance ~ shot_good, data = mash)
+	
+```
+
+
+
+```{r spine plots, include = TRUE, message = FALSE}
+
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	make some plots ...
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+	mash_plot <- subset (mash, select = c(2, 3, 4, 5, 6, 8, 9, 10,
+												14, 15, 16, 17, 20, 22, 23, 24, 30, 31, 12))
+	for (i in 1 : length(mash_plot))
+	{
+		if(class(mash_plot[,i]) == "integer" || class(mash_plot[,i]) == "factor")
+		{
+			png (filename = paste0(names(mash_plot[i]), "_%02d.png"), width = 500, height = 400)
+			spineplot (factor(shot_good) ~ mash_plot[,i],
+					data = mash_plot,
+					col = c("#41ae76", "#8c96c6"),
+					main = (names(mash_plot[i])),
+					ylim = c(0.25, 0.75))
+			dev.off()
+		}
+	}
+
+```
+
+
+
+```{r first model}
+
+library(Amelia)
+#missmap(mash, main = "Missing values vs observed")
+
+
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	- choose factors based on visual of spine plots
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+	mash_baseline <- subset (mash, select = c(2, 3, 4, 5, 6, 8, 9, 10,
+												14, 15, 16, 17, 20, 23, 24, 30, 31, 12, 13))
+	
+# ...	remove overtimes (until time_remaing is improved) !!
+	
+	mash_baseline <- mash_baseline[mash_baseline$period < 5,]
+	
+# ... 	remove test set rows
+	
+	mash_baseline <- mash_baseline[!is.na(mash_baseline$shot_made_flag) , ]
+
+# ...	!! removed action_type for now due to types not common between traing set and test set
+	
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	- choose factors based on visual of spine plots
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+	model <- glm(shot_made_flag ~ ., family = binomial(link = 'logit'), data = mash_baseline)
+
+#	By using function summary() we obtain the results of our model:
+
+	summary(model)
+	
+	mash_baseline$pred <- predict(model, na.action = na.exclude)
+	mash_test$prob <- exp(mash_test$pred) / (1 + exp(mash_test$pred))
+	mash_test$y_pred <- 0
+	one_lst <- mash_test$prob >= 0.5
+	mash_test$y_pred[one_lst] <- 1
+
+
+```
+
+```{r kaggle submit}
+
+
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+# ...	submittal file - visually selected EVs
+# ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+	mash_test <- mash[is.na(mash$shot_made_flag),]
+
+	mash_test$pred <- predict(model, newdata = mash_test)
+	mash_test$prob <- exp(mash_test$pred) / (1 + exp(mash_test$pred))
+	mash_test$y_pred <- 0
+	one_lst <- mash_test$prob >= 0.5
+	mash_test$y_pred[one_lst] <- 1
+
+	df_submit <- data.frame(mash_test$shot_id, mash_test$y_pred)
+	names(df_submit) <- c("shot_id", "shot_made_flag")
+	
+	write.csv(df_submit, file = "submit_baseline_2017.08.20.csv", row.names = FALSE)
+```
+
