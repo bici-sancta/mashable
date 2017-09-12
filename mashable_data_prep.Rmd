@@ -79,6 +79,33 @@ Please include this citation if you plan to use this database:
 
 ```{r add some variables}
 
+# ... add day_of_week column from boolean daily columns
+
+  mash$day_of_week <- "01_Mon"
+  mash$day_of_week[which(mash$weekday_is_tuesday == 1)] <- "02_Tue"
+  mash$day_of_week[which(mash$weekday_is_wednesday == 1)] <- "03_Wed"
+  mash$day_of_week[which(mash$weekday_is_thursday == 1)] <- "04_Thu"
+  mash$day_of_week[which(mash$weekday_is_friday == 1)] <- "05_Fri"
+  mash$day_of_week[which(mash$weekday_is_saturday == 1)] <- "06_Sat"
+  mash$day_of_week[which(mash$weekday_is_sunday == 1)] <- "07_Sun"
+  mash$day_of_week <- as.factor(mash$day_of_week)
+
+# ... add data_channel column from boolean data_channel columns
+
+  mash$data_channel <- "LifeStyle"
+  mash$data_channel[which(mash$data_channel_is_entertainment == 1)] <- "Entertainment"
+  mash$data_channel[which(mash$data_channel_is_bus == 1)] <- "Business"
+  mash$data_channel[which(mash$data_channel_is_socmed == 1)] <- "SocMed"
+  mash$data_channel[which(mash$data_channel_is_tech == 1)] <- "Tech"
+  mash$data_channel[which(mash$data_channel_is_world == 1)] <- "World"
+  mash$data_channel <- as.factor(mash$data_channel)
+  
+  
+# ... add log_shares
+
+  mash$log_shares <- log(mash$shares)
+  
+  
 ```
 
 ```{r drop no information columns} 
@@ -121,6 +148,8 @@ Please include this citation if you plan to use this database:
 
   setwd(home_dir)
   setwd(eda_dir)
+  
+#  sorted_by_shares <- mash[order(mash$shares),]
 
 # ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # ...	make some plots for numeric variables .....
@@ -130,12 +159,14 @@ Please include this citation if you plan to use this database:
 # ... 	use cx_scale = 1 for in-line html knitted docs
 # ...	use cx_scale = 3 for pdf landscape mode knitted docs
 
-	par (mfrow = c (1, 2))
+	par (mfrow = c (1, 1))
 
-	plot(mash$shares, col = "darkgoldenrod",
+	png (filename = "log_shares_%02d.png", width = 1800, height = 600)
+	plot(mash$log_shares, col = "slateblue",
 		cex = cx_scale, cex.lab = cx_scale, cex.axis = cx_scale, cex.main = cx_scale,
 	  	xlab = names(mash[i]),
-	  	main = "Dependent variable - Shares sequence")
+	  	main = "Dependent variable - log(shares)")
+	dev.off()
 
 	for (i in 2 : length(mash))
 	{
@@ -147,7 +178,7 @@ Please include this citation if you plan to use this database:
 			png (filename = paste0(names(mash[i]), "_%02d.png"), width = 1800, height = 600)
 			par (mfrow = c (1, 4))
 
-			plot(mash[,i], col = "cyan",
+			plot(mash[,i], col = "dodgerblue4",
 				 cex = cx_scale, cex.lab = cx_scale, cex.axis = cx_scale, cex.main = cx_scale,
 				  	xlab = names(mash[i]),
 				  	main = "Independent variable sequence")
@@ -167,8 +198,8 @@ Please include this citation if you plan to use this database:
                   bty = "n", cex = cx_scale)
 			
 			
-			plot(mash$shares  ~ mash[,i],
-				 		col = "blue",
+			plot(mash$log_shares  ~ mash[,i],
+				 		col = "darkslateblue",
 				 		cex = cx_scale,
 				 		cex.lab = cx_scale,
 				 		cex.axis = cx_scale,
@@ -182,18 +213,40 @@ Please include this citation if you plan to use this database:
 # ...	look at residuals from one-variable linear fit			
 # ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-			fit <- lm(mash$shares ~ mash[,i], na.action = na.exclude)
+			fit <- lm(mash$log_shares ~ mash[,i], na.action = na.exclude)
 			res <- resid(fit)
 			plot (mash[,i], res, cex = cx_scale, cex.lab = cx_scale, cex.axis = cx_scale, cex.main = cx_scale,
 				  ylab = "Residuals",
 				  xlab = names(mash[i]),
 				  main = "Residuals from Linear Fit",
-				  col = "magenta")
+				  col = "darkorchid")
 			abline (0, 0)
 			
 		}
 		dev.off()
 	}
+
+	
+	for (i in 2:(length(mash)))
+	{
+		if(class(mash[,i]) == "factor")
+		{
+			png (filename = paste0(names(mash[i]), "_%02d.png"), width = 1800, height = 600)
+  		par (mfrow = c (2, 2))
+
+  		plot_title <- names(mash[i])
+
+			p <- ggplot(mash, aes(x = mash[,i], fill = mash[,i])) + 
+				geom_bar() + labs(title = plot_title)
+			print(p)
+
+			p <- ggplot(mash, aes(x = mash[,i], y = log(shares), fill = mash[,i])) + 
+				geom_boxplot() + labs(title = plot_title)
+			print(p)
+			
+			dev.off()
+		}
+	}	
 
 ```
 
