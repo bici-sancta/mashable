@@ -174,7 +174,6 @@ Please include this citation if you plan to use this database:
 		   					|| class(mash[,i]) == "numeric"
 		   					|| class(mash[,i]) == "matrix")
 		{
-				  
 			png (filename = paste0(names(mash[i]), "_%02d.png"), width = 1800, height = 600)
 			par (mfrow = c (1, 4))
 
@@ -204,10 +203,10 @@ Please include this citation if you plan to use this database:
 				 		cex.lab = cx_scale,
 				 		cex.axis = cx_scale,
 				 		cex.main = cx_scale,
-				 	ylab = "Shares",
+				 	ylab = "log(Shares)",
 				  	xlab = names(mash[i]),
 				  	main = "Independent variable vs. Shares")
-			abline(lm(mash$shares ~ mash[,i]))
+			abline(lm(mash$log_shares ~ mash[,i]))
 
 # ...	-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 # ...	look at residuals from one-variable linear fit			
@@ -222,8 +221,9 @@ Please include this citation if you plan to use this database:
 				  col = "darkorchid")
 			abline (0, 0)
 			
+			dev.off()
+			
 		}
-		dev.off()
 	}
 
 	
