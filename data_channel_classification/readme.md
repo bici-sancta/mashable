@@ -1,3 +1,3 @@
-add any notes here for next steps
+what on earth is going on?
 
-if you are lucky enough to have preeti on your data science team, it is a good day !
+Random Forest 93% accuracy!! but only 80% on cross validation again! 93 with golden_data_set!!
